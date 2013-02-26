@@ -46,9 +46,9 @@ if (Meteor.isClient) {
 	return Races.find({}, {sort: {raceNumber: 1}});
     };
 
-    Template.race.oldRace = function () {
-	var raceNumber = this.raceNumber;
-	return raceNumber < 2;
+    Template.race.locked = function () {
+	var raceDate = this.date;
+	return raceDate < new Date();
     };
 
     Template.race.placeholder = function () {
@@ -97,6 +97,14 @@ if (Meteor.isClient) {
 
 if (Meteor.isServer) {
   Meteor.startup(function () {
+      Accounts.onCreateUser(function(options, user) {
+          if (options.profile) {
+              user.profile = options.profile;
+          }
+          user._id = (new Meteor.Collection.ObjectID())._str;
+          return user;
+      });
+
 
       if (Races.find().count() === 0) {
       var races = [["Sunday","24-Feb","Daytona 500","Daytona",1],
@@ -136,10 +144,16 @@ if (Meteor.isServer) {
 		   ["Sunday","10-Nov","AdvoCare (2) 500","Phoenix",3],
 		   ["Sunday","17-Nov","Ford 400","Homestead",3]];
 	  for (var i = 0; i < races.length; i++){
+	      var dateString;
+	      if (races[i][0] == "Saturday") {
+		  dateString = "12:00 EDT " + races[i][1] + " 2013";
+	      }
+	      else {
+		  dateString = "1:00 EDT " + races[i][1] + " 2013";
+	      }
 	      Races.insert({name: races[i][2],
 			    raceId: races[i][2].replace(/\W/g,''),
-			    date: races[i][1],
-			    day: races[i][0],
+			    date: new Date(dateString),
 			    track: races[i][3],
 			    seasonPart: races[i][4],
 			    raceNumber: i+1}); 

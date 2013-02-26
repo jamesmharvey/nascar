@@ -31,7 +31,7 @@
   <tr>
     <td>{{name}}</td>
     <td>
-      <select id="{{raceId}}" {{#if oldRace}}disabled{{/if}}>
+      <select id="{{raceId}}" {{#if locked}}disabled{{/if}}>
 	{{> driverSelect raceId}}
       </select>
     </td>
@@ -39,8 +39,9 @@
 </template>
 
 <template name="driverSelect">
-    <option>Pick a Driver...</option>
+    <option value="">Pick a Driver...</option>
     {{#each freeDriver}}
     <option value="{{name}}" {{selected}}>{{name}}</option>
     {{/each}}
 </template>
+
