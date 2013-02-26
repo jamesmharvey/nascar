@@ -1,0 +1,46 @@
+<head>
+  <title>Fantasy NASCAR Pool Picker</title>
+</head>
+
+<body>
+  {{> body}}
+</body>
+
+<template name="body">
+  {{loginButtons}}
+  {{#if currentUser}}
+  {{> races}}
+  {{else}}
+  <h3>PLEASE LOG IN</h3>
+  {{/if}}
+</template>
+
+<template name="races">
+  <table>
+    <tr>
+      <th>Race Name</th>
+      <th>Your Pick</th>
+    </tr>
+    {{#each race}}
+    {{> race}}
+    {{/each}}
+  </table>
+</template>
+
+<template name="race">
+  <tr>
+    <td>{{name}}</td>
+    <td>
+      <select id="{{raceId}}" {{#if oldRace}}disabled{{/if}}>
+	{{> driverSelect raceId}}
+      </select>
+    </td>
+  </tr> 
+</template>
+
+<template name="driverSelect">
+    <option>Pick a Driver...</option>
+    {{#each freeDriver}}
+    <option value="{{name}}" {{selected}}>{{name}}</option>
+    {{/each}}
+</template>
