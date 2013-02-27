@@ -39,11 +39,45 @@ Picks.deny({
 
 
 if (Meteor.isClient) {
+    Meteor.subscribe("drivers");
+    Meteor.subscribe("races");
+    Meteor.subscribe("picks");
+    Meteor.subscribe("allUserData");
+
+    var okCancelEvents = function (selector, callbacks) {
+	var ok = callbacks.ok || function () {};
+	var cancel = callbacks.cancel || function () {};
+
+	var events = {};
+	events['keyup '+selector+', keydown '+selector+', focusout '+selector] =
+	    function (evt) {
+		if (evt.type === "keydown" && evt.which === 27) {
+		    // escape = cancel
+		    cancel.call(this, evt);
+
+		} else if (evt.type === "keyup" && evt.which === 13 ||
+			   evt.type === "focusout") {
+		    // blur/return/enter = ok/submit if non-empty
+		    var value = String(evt.target.value || "");
+		    if (value)
+			ok.call(this, value, evt);
+		    else
+			cancel.call(this, evt);
+		}
+	    };
+
+	return events;
+    };
 
 
 
     Template.races.race = function () {
 	return Races.find({}, {sort: {raceNumber: 1}});
+    };
+    
+    Template.races.otherPlayersHeader = function () {
+//	Meteor.users.find({_id: {$not: Meteor.userId()}}).map(function (user) {return user.profile ? user.profile.name : user.emails[0].address || ''});
+	return '';
     };
 
     Template.race.locked = function () {
@@ -62,7 +96,7 @@ if (Meteor.isClient) {
     Template.driverSelect.freeDriver = function () {
 	var raceName = this.toString();
 	var thisRaceNumber = Races.findOne({raceId: raceName}).raceNumber;
-	var userId = Meteor.user()._id;
+	var userId = Meteor.userId();
 	var selectedDriver = '';
 	if (Picks.find({owner: userId, racename: raceName}).count()) {
 	    selectedDriver = Picks.findOne({owner: userId, racename: raceName}).pick;
@@ -80,7 +114,7 @@ if (Meteor.isClient) {
 
     Template.race.events({
 	'change select': function(event) {
-	    var userId = Meteor.user()._id;
+	    var userId = Meteor.userId();
 	    var raceId = event.currentTarget.getAttribute("id");
 	    var selectedDriver = event.currentTarget.value;
 	    if (!Picks.find({owner: userId, racename: raceId}).count()) {
@@ -91,20 +125,47 @@ if (Meteor.isClient) {
 	    }
 	}
     });
+
+    Template.yourName.events({
+	'keyup #yourName, blur #yourName': function(event) {
+	    if (event.type === "keyup" && event.which === 13 ||
+		event.type === "blur") {
+		var value = event.target.value;
+		if (value) {
+		    Meteor.users.update({_id: Meteor.userId()}, {$set: {"profile.name": value}});
+		}
+		if (event.type != "blur") {event.target.blur()};
+	    }	    
+	}
+    });
+
+    Template.yourName.namePlaceholder = function () {
+	return Meteor.user().profile.name || "Name";
+    };
+
 }
 
 
 
 if (Meteor.isServer) {
   Meteor.startup(function () {
-      Accounts.onCreateUser(function(options, user) {
-          if (options.profile) {
-              user.profile = options.profile;
-          }
-          user._id = (new Meteor.Collection.ObjectID())._str;
-          return user;
+      Meteor.publish("drivers", function () {
+	  return Drivers.find(); // everything
       });
 
+      Meteor.publish("races", function () {
+	  return Races.find(); // everything
+      });
+
+      Meteor.publish("picks", function () {
+	  var pastRaces = Races.find({date: {$lt: new Date()}}).map(function (race) {return race.raceId});
+	  var userId = this.userId;
+	  return Picks.find({$or: [{owner: userId}, {racename: {$in: pastRaces}}]});
+      });
+		   
+      Meteor.publish("allUserData", function () {
+	  return Meteor.users.find({});
+      });
 
       if (Races.find().count() === 0) {
       var races = [["Sunday","24-Feb","Daytona 500","Daytona",1],

@@ -7,12 +7,32 @@
 </body>
 
 <template name="body">
-  {{loginButtons}}
+  <div style="float: right">
+    <div style="right:0">
+    {{loginButtons align="right"}}
+    </div>
+    {{#if currentUser}}
+    {{> editProfile}}
+    {{/if}}
+  </div>
   {{#if currentUser}}
   {{> races}}
   {{else}}
-  <h3>PLEASE LOG IN</h3>
+  <h3>Sign in to make picks</h3>
   {{/if}}
+</template>
+
+<template name="editProfile">
+  <div>
+  {{> yourName}}
+  </div>
+</template>
+
+<template name="yourName">
+  <div>
+    Your name: 
+    <input id="yourName" placeholder="name">
+  </div>
 </template>
 
 <template name="races">
@@ -20,6 +40,7 @@
     <tr>
       <th>Race Name</th>
       <th>Your Pick</th>
+      {{otherPlayersHeader}}
     </tr>
     {{#each race}}
     {{> race}}
