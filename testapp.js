@@ -141,13 +141,15 @@ if (Meteor.isClient) {
 	    var raceId = event.currentTarget.getAttribute("id");
 	    var selectedDriver = event.currentTarget.value;
 	    if (!Picks.find({owner: userId, racename: raceId}).count()) {
-		console.log('foo');
 		Picks.insert({owner: userId, racename: raceId, pick: selectedDriver});
 	    }
 	    else {
-		console.log('bar');
 		var pickId = Picks.findOne({owner: userId, racename: raceId})._id;
 		Picks.update({_id: pickId}, {$set: {pick: selectedDriver}})
+	    }
+	    if (Picks.find({owner: userId, pick: selectedDriver, racename: {$not: raceId}}).count()) {
+		var pickId = Picks.findOne({owner: userId, pick: selectedDriver, racename: {$not: raceId}})._id;
+		Picks.remove({_id: pickId});
 	    }
 	},
 
