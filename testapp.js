@@ -8,17 +8,13 @@ Picks.allow({
     // the user must be logged in, and the document must be owned by the user
 	return (userId && doc.owner === userId);
     },
-    update: function (userId, docs, fields, modifier) {
+    update: function (userId, doc, fields, modifier) {
     // can only change your own documents
-	return _.all(docs, function(doc) {
-	    return doc.owner === userId;
-	});
+	return doc.owner === userId;
     },
-    remove: function (userId, docs) {
+    remove: function (userId, doc) {
     // can only remove your own documents
-	return _.all(docs, function(doc) {
-	    return doc.owner === userId;
-	});
+	return doc.owner === userId;
     },
     fetch: ['owner']
 });
@@ -145,10 +141,13 @@ if (Meteor.isClient) {
 	    var raceId = event.currentTarget.getAttribute("id");
 	    var selectedDriver = event.currentTarget.value;
 	    if (!Picks.find({owner: userId, racename: raceId}).count()) {
+		console.log('foo');
 		Picks.insert({owner: userId, racename: raceId, pick: selectedDriver});
 	    }
 	    else {
-		Picks.update({owner: userId, racename: raceId}, {$set: {pick: selectedDriver}})
+		console.log('bar');
+		var pickId = Picks.findOne({owner: userId, racename: raceId})._id;
+		Picks.update({_id: pickId}, {$set: {pick: selectedDriver}})
 	    }
 	},
 
