@@ -42,6 +42,7 @@ if (Meteor.isClient) {
     Meteor.subscribe("drivers");
     Meteor.subscribe("races");
     Meteor.subscribe("picks");
+    Meteor.subscribe("futurepicks");
     Meteor.subscribe("allUserData");
 
     var okCancelEvents = function (selector, callbacks) {
@@ -69,6 +70,8 @@ if (Meteor.isClient) {
 	return events;
     };
 
+    
+
 
     Template.races.race = function () {
 	return Races.find({}, {sort: {raceNumber: 1}});
@@ -88,7 +91,7 @@ if (Meteor.isClient) {
 	return raceDate < new Date();
     };
 
-    Template.race.otherDriverPicks = function (raceId) {
+    Template.race.pastOtherPicks = function (raceId) {
 	var otherUserIds = Meteor.users.find({_id: {$not: Meteor.userId()}}, {sort: {_id: 1}}).map(function (user) {return user._id});
 	var tds = _.map(otherUserIds, function (userId) {
 	    var pick = Picks.find({racename: raceId, owner: userId}).count() ?
@@ -97,6 +100,16 @@ if (Meteor.isClient) {
 	    return '<td>' + pick + '</td>';
 	});
 	return tds.join('');
+    };
+
+    Template.race.futureOtherPicks = function (raceId) {
+	var otherUserIds = Meteor.users.find({_id: {$not: Meteor.userId()}}, {sort: {_id: 1}}).map(function (user) {return user._id});
+        var tds = _.map(otherUserIds, function (userId) {
+            var pick = Picks.find({racename: raceId, owner: userId}).count() ?
+                'Pick Made' : '';
+            return '<td>' + pick + '</td>';
+        });
+        return tds.join('');
     };
 
     Template.race.placeholder = function () {
@@ -137,6 +150,10 @@ if (Meteor.isClient) {
 	    else {
 		Picks.update({owner: userId, racename: raceId}, {$set: {pick: selectedDriver}})
 	    }
+	},
+
+	'click #submit': function(event) {
+	    
 	}
     });
 
@@ -176,6 +193,10 @@ if (Meteor.isServer) {
 	  var userId = this.userId;
 	  return Picks.find({$or: [{owner: userId}, {racename: {$in: pastRaces}}]});
       });
+
+      Meteor.publish("futurepicks", function () {
+	  return Picks.find({},{fields: {pick: 0}});
+      });
 		   
       Meteor.publish("allUserData", function () {
 	  return Meteor.users.find({});
@@ -202,8 +223,19 @@ if (Meteor.isServer) {
 	  }
       };
 
-      var result = Meteor.http.get("http://sports.yahoo.com/nascar/sprint/races/1/qualify");
-      Races.update({yahooId: 1}, {result: result});
+      var need38s = Races.find({$and: [{date: {$lt: new Date()}}, {qual38: {$exists: false}}]}).fetch();
+      for (i=0; i<need38s.length; i++) {
+	  var race = need38s[i]; 
+	  var yahooId = race.yahooId; 
+	  var qualHTML = Meteor.http.get("http://sports.yahoo.com/nascar/sprint/races/" + yahooId + "/qualify");
+	  if (qualHTML.content.match(/38<\/th>[^\(]*\>([^\<]*)<\/a> \(/)) {
+	      var driver38 = RegExp.$1;
+	      Races.update({yahooId: yahooId}, {$set: {qual38: driver38}});
+	  };	  
+      }
+
+
+
   
       if (Drivers.find().count() === 0) {
 	  var drivers = ["J McMurray",
@@ -260,7 +292,26 @@ if (Meteor.isServer) {
 			 "C Edwards"];
 	  for (var i = 0; i < drivers.length; i++)
               Drivers.insert({name: drivers[i]});
-      }
+      };
+
+      Meteor.methods({
+	  editpick: function (userName, raceNumber, selectedDriver) {
+	      var userId = Meteor.users.findOne({$or: [{"profile.name": userName}, {"emails.0.address": userName}]})._id;
+	      var callerId = this.userId
+	      if (callerId === "u8A3sZzAqA3AXc7x8" || callerId === "xrhtrBSMe9qjEqXrb")
+	      {
+		  var raceId = Races.findOne({raceNumber: raceNumber}).raceId;
+		  if (!Picks.find({owner: userId, racename: raceId}).count()) {
+		      Picks.insert({owner: userId, racename: raceId, pick: selectedDriver});
+		  }
+		  else {
+		      Picks.update({owner: userId, racename: raceId}, {$set: {pick: selectedDriver}})
+		  }
+		  
+	      }
+	  }
+
+      });
 
     // code to run on server at startup
   });

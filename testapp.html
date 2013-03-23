@@ -36,6 +36,7 @@
 </template>
 
 <template name="races">
+  <button type="button" id="submit">Update Picks</button>
   <table>
     <tr>
       <th>Race Name</th>
@@ -57,7 +58,9 @@
       </select>
     </td>
     {{#if locked}}
-    {{{otherDriverPicks raceId}}};
+    {{{pastOtherPicks raceId}}};
+    {{else}}
+    {{{futureOtherPicks raceId}}};
     {{/if}}
   </tr> 
 </template>
