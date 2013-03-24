@@ -101,10 +101,14 @@ if (Meteor.isClient) {
     Template.race.pastOtherPicks = function (raceId) {
 	var otherUserIds = Meteor.users.find({_id: {$not: Meteor.userId()}}, {sort: {_id: 1}}).map(function (user) {return user._id});
 	var tds = _.map(otherUserIds, function (userId) {
-	    var pick = Picks.find({racename: raceId, owner: userId}).count() ?
-		Picks.findOne({racename: raceId, owner: userId}).pick
-	    : 'No pick made';
-	    return '<td>' + pick + '</td>';
+	    var pick = 'No pick made';
+	    var classstring = 'class="nopick"';
+	    if (Picks.find({racename: raceId, owner: userId}).count()){
+		pickObj = Picks.findOne({racename: raceId, owner: userId});
+		pick = pickObj.pick;
+		classstring = (pickObj.autopick == "No Pick") ? 'class="nopick"' : '';
+	    }
+	    return '<td ' + classstring + '>' + pick + '</td>';
 	});
 	return tds.join('');
     };
@@ -209,7 +213,7 @@ if (Meteor.isServer) {
 	    if (qualHTML.content.match(/38<\/th>[^\(]*\>([^\<]*)<\/a> \(/)) {
 		var driver38 = RegExp.$1;
 		Races.update({yahooId: yahooId}, {$set: {qual38: driver38}});
-		var ownersWithPicks = _.map(Picks.find({racename: race.raceId}).fetch(), function (pick) {return pick.owner});
+		var ownersWithPicks = _.map(Picks.find({$and: [{racename: race.raceId}, {pick: {$not: ""}}]}).fetch(), function (pick) {return pick.owner});
 		var allOwners = _.map(Meteor.users.find().fetch(),function (user) {return user._id});
 		var ownersWithoutPicks = _.difference(allOwners,ownersWithPicks);
 		for (j=0; j<ownersWithoutPicks.length; j++) {
