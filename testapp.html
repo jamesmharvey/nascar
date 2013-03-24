@@ -15,11 +15,16 @@
     {{> editProfile}}
     {{/if}}
   </div>
+  {{> header}}
   {{#if currentUser}}
   {{> races}}
   {{else}}
   <h3>Sign in to make picks</h3>
   {{/if}}
+</template>
+
+<template name="header">
+  <H2>Nascar Picker</H2>
 </template>
 
 <template name="editProfile">

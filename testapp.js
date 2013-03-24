@@ -24,14 +24,25 @@ Picks.deny({
     // can't change owners
 	return _.contains(fields, 'owner');
     },
-    remove: function (userId, docs) {
-    // can't remove locked documents
-	return _.any(docs, function (doc) {
-	    return doc.locked;
-	});
-    },
-    fetch: ['locked'] // no need to fetch 'owner'
+    fetch: [] // no need to fetch 'owner'
 });
+
+Races.allow({
+    insert: function () {return false},
+    update: function () {return true},
+    remove: function () {return false}
+});
+
+var timeToTuesday = function (now) {
+    var days = (9 - now.getUTCDay())%7;
+    var hours = (12 - now.getUTCHours());
+    var minutes = 0 - now.getUTCMinutes();
+    var seconds = 0 - now.getUTCSeconds();
+    var milliseconds = 0 - now.getUTCMilliseconds();
+    var timeOffset = milliseconds + 1000*(seconds + 60*(minutes + 60*(hours + 24*days)));
+    return timeOffset;
+}
+
 
 
 if (Meteor.isClient) {
@@ -180,6 +191,34 @@ if (Meteor.isClient) {
 
 
 if (Meteor.isServer) {
+    var newCurrentRace = function () {
+	Races.update({thisweek: true}, {$unset: {thisweek: ''}}, {multi: true});
+	var now = new Date();
+	var nextTue = new Date(now.valueOf() + timeToTuesday(now));
+	var prevTue = new Date(nextTue.valueOf() - 7*24*60*60*1000);
+	Races.update({$and: [{date: {$gt: prevTue}}, {date: {$lt: nextTue}}]}, {$set: {thisweek: true}});
+	Races.update({date: {$lt: prevTue}}, {$set: {oldRace: true}}, {multi: true});
+    };
+    var setRaceInterval = function () {Meteor.setInterval (newCurrentRace, 7*24*60*60*1000)};
+    var set38s = function () {
+	var need38s = Races.find({$and: [{date: {$lt: new Date()}}, {qual38: {$exists: false}}]}).fetch();
+	for (i=0; i<need38s.length; i++) {
+	    var race = need38s[i]; 
+	    var yahooId = race.yahooId; 
+	    var qualHTML = Meteor.http.get("http://sports.yahoo.com/nascar/sprint/races/" + yahooId + "/qualify");
+	    if (qualHTML.content.match(/38<\/th>[^\(]*\>([^\<]*)<\/a> \(/)) {
+		var driver38 = RegExp.$1;
+		Races.update({yahooId: yahooId}, {$set: {qual38: driver38}});
+		var ownersWithPicks = _.map(Picks.find({racename: race.raceId}).fetch(), function (pick) {return pick.owner});
+		var allOwners = _.map(Meteor.users.find().fetch(),function (user) {return user._id});
+		var ownersWithoutPicks = _.difference(allOwners,ownersWithPicks);
+		for (j=0; j<ownersWithoutPicks.length; j++) {
+		    Picks.insert({owner: ownersWithoutPicks[j], racename: race.raceId, pick: driver38, autopick: "No Pick"});
+		}
+	    }
+	}
+    }
+
   Meteor.startup(function () {
       Meteor.publish("drivers", function () {
 	  return Drivers.find(); // everything
@@ -224,16 +263,8 @@ if (Meteor.isServer) {
 	  }
       };
 
-      var need38s = Races.find({$and: [{date: {$lt: new Date()}}, {qual38: {$exists: false}}]}).fetch();
-      for (i=0; i<need38s.length; i++) {
-	  var race = need38s[i]; 
-	  var yahooId = race.yahooId; 
-	  var qualHTML = Meteor.http.get("http://sports.yahoo.com/nascar/sprint/races/" + yahooId + "/qualify");
-	  if (qualHTML.content.match(/38<\/th>[^\(]*\>([^\<]*)<\/a> \(/)) {
-	      var driver38 = RegExp.$1;
-	      Races.update({yahooId: yahooId}, {$set: {qual38: driver38}});
-	  };	  
-      }
+      set38s();
+
 
 
 
@@ -294,6 +325,10 @@ if (Meteor.isServer) {
 	  for (var i = 0; i < drivers.length; i++)
               Drivers.insert({name: drivers[i]});
       };
+
+      Meteor.setTimeout(function () {newCurrentRace(); setRaceInterval()}, timeToTuesday(new Date()));
+      newCurrentRace();
+      
 
       Meteor.methods({
 	  editpick: function (userName, raceNumber, selectedDriver) {
