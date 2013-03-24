@@ -263,12 +263,6 @@ if (Meteor.isServer) {
 	  }
       };
 
-      set38s();
-
-
-
-
-  
       if (Drivers.find().count() === 0) {
 	  var drivers = ["J McMurray",
 			 "Brad Keselowski",
@@ -327,8 +321,9 @@ if (Meteor.isServer) {
       };
 
       Meteor.setTimeout(function () {newCurrentRace(); setRaceInterval()}, timeToTuesday(new Date()));
-      newCurrentRace();
+      Meteor.autorun(newCurrentRace);
       
+      Meteor.autorun(set38s);
 
       Meteor.methods({
 	  editpick: function (userName, raceNumber, selectedDriver) {
@@ -345,6 +340,11 @@ if (Meteor.isServer) {
 		  }
 		  
 	      }
+	  },
+	  
+	  get: function (yahooId) {
+	      return 500;
+	      return Meteor.http.get("http://sports.yahoo.com/nascar/sprint/races/" + yahooId + "/qualify");
 	  }
 
       });
