@@ -18,6 +18,9 @@
   {{> header}}
   {{#if currentUser}}
   {{> races}}
+  {{#if commissioner}}
+  {{> commissionerTools}}
+  {{/if}}
   {{else}}
   <h3>Sign in to make picks</h3>
   {{/if}}
@@ -77,3 +80,34 @@
     {{/each}}
 </template>
 
+<template name="allDriverSelect">
+    <option value="">Pick a Driver...</option>
+    {{#each driver}}
+    <option value="{{name}}">{{name}}</option>
+    {{/each}}
+</template>
+
+<template name="raceSelect">
+    <option value="">Pick a Race...</option>
+    {{#each race}}
+    <option value="{{name}}">{{name}}</option>
+    {{/each}}
+</template>
+
+<template name="ownerSelect">
+    <option value="">Pick an Owner...</option>
+    {{#each owner}}
+    <option value="{{name}}">{{name}}</option>
+    {{/each}}
+</template>
+
+<template name="commissionerTools">
+  <div id="commissionerTools">
+    <ul>
+      <li>Owner: <select id="commOwner">{{> ownerSelect}}</select></li>
+      <li>Race: <select id="commRace">{{> raceSelect}}</select></li>
+      <li>Driver: <select id="commDriver">{{> allDriverSelect}}</select></li>
+    </ul>
+    <button type="button" id="commissionerSetPick">Set Pick</buton>
+  </div>
+</template>
